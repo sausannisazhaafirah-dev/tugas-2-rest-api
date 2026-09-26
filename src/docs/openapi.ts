@@ -1,3 +1,9 @@
+import {
+  createMenuItemSchema,
+  menuItemIdParamSchema,
+  menuItemQuerySchema,
+  updateMenuItemSchema,
+} from "../schemas/menuItemSchema.ts";
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 import {
@@ -239,7 +245,91 @@ registry.registerPath({
 // ----------------------------------------------------------------- generate
 // Dokumen OpenAPI 3.0 dihasilkan IN-MEMORY (tanpa file), lalu disajikan
 // swagger-ui-express di /docs — selalu sinkron dengan schema terbaru.
+// =============================================================== MENU_ITEMS
+const errRes = (description: string) => ({
+  description,
+  content: { "application/json": { schema: errorSchema } },
+});
+
+const menuItemWithStall = registry.register(
+  "MenuItemWithStall",
+  z.object({
+    id: z.number().openapi({ example: 1 }),
+    stallId: z.number().openapi({ example: 1 }),
+    stallName: z.string().openapi({ example: "Warung Bu Tini" }),
+    stallLocation: z.string().nullable().openapi({ example: "Kantin FKIP" }),
+    name: z.string().openapi({ example: "Kwetiau Goreng Spesial" }),
+    price: z.number().openapi({ example: 15000 }),
+    isAvailable: z.boolean().openapi({ example: true }),
+  }),
+);
+const menuItemInput = registry.register("MenuItemInput", createMenuItemSchema);
+const menuItemUpdate = registry.register("MenuItemUpdate", updateMenuItemSchema);
+const menuItemList = z.object({ status: z.literal("success"), data: z.array(menuItemWithStall) });
+const menuItemDetail = z.object({ status: z.literal("success"), data: menuItemWithStall });
+
+registry.registerPath({
+  method: "get",
+  path: "/api/v1/menu-items",
+  tags: ["Menu Items"],
+  summary: "Daftar menu (JOIN warung)",
+  request: { query: menuItemQuerySchema },
+  responses: {
+    200: { description: "Daftar menu + nama warung", content: { "application/json": { schema: menuItemList } } },
+    400: errRes("Query tidak valid"),
+  },
+});
+registry.registerPath({
+  method: "post",
+  path: "/api/v1/menu-items",
+  tags: ["Menu Items"],
+  summary: "Tambah menu",
+  request: { body: { content: { "application/json": { schema: menuItemInput } } } },
+  responses: {
+    201: { description: "Menu dibuat", content: { "application/json": { schema: menuItemDetail } } },
+    400: errRes("Body tidak valid"),
+    404: errRes("Warung tidak ditemukan"),
+  },
+});
+registry.registerPath({
+  method: "get",
+  path: "/api/v1/menu-items/{id}",
+  tags: ["Menu Items"],
+  summary: "Detail menu (JOIN warung)",
+  request: { params: menuItemIdParamSchema },
+  responses: {
+    200: { description: "Detail menu", content: { "application/json": { schema: menuItemDetail } } },
+    404: errRes("Menu tidak ditemukan"),
+  },
+});
+registry.registerPath({
+  method: "put",
+  path: "/api/v1/menu-items/{id}",
+  tags: ["Menu Items"],
+  summary: "Update menu",
+  request: {
+    params: menuItemIdParamSchema,
+    body: { content: { "application/json": { schema: menuItemUpdate } } },
+  },
+  responses: {
+    200: { description: "Menu ter-update", content: { "application/json": { schema: menuItemDetail } } },
+    400: errRes("Body/parameter tidak valid"),
+    404: errRes("Menu atau warung tidak ditemukan"),
+  },
+});
+registry.registerPath({
+  method: "delete",
+  path: "/api/v1/menu-items/{id}",
+  tags: ["Menu Items"],
+  summary: "Hapus menu",
+  request: { params: menuItemIdParamSchema },
+  responses: {
+    200: { description: "Menu terhapus", content: { "application/json": { schema: menuItemDetail } } },
+    404: errRes("Menu tidak ditemukan"),
+  },
+});
 const generator = new OpenApiGeneratorV3(registry.definitions);
+
 
 export const openApiDocument = generator.generateDocument({
   openapi: '3.0.0',

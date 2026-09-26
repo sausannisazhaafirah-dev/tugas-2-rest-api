@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import swaggerUi from 'swagger-ui-express';
 import { getDb } from './db/index.ts';
 import { stallRouter } from './routes/stallRouter.ts';
+import { menuItemRouter } from "./routes/menuItemRouter.ts";
 import { notFoundHandler } from './middlewares/notFound.ts';
 import { errorHandler } from './middlewares/errorHandler.ts';
 import { openApiDocument } from './docs/openapi.ts';
@@ -30,6 +31,7 @@ app.get('/health', async (_req, res) => {
 });
 
 app.use('/api/v1/stalls', stallRouter);
+app.use("/api/v1/menu-items", menuItemRouter);
 
 // 404 untuk rute yang tidak dikenal, lalu error handling terpusat (paling akhir).
 app.use(notFoundHandler);
